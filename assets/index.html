@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小恐龙快跑</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#f7f7f7; touch-action:manipulation; }
+  canvas { display:block; }
+  #wrap { position:fixed; inset:0; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<script>
+(function(){
+  "use strict";
+  var cv = document.getElementById('c');
+  var ctx = cv.getContext('2d');
+  var W=0, H=0, DPR=1, GROUND=0;
+
+  // ---- 精灵（像素画，1=实心）----
+  var DINO_RUN1 = [
+    "0000000000011111111100",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0001111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111100000000000",
+    "1111111111000000000000",
+    "1111111110000000000000",
+    "1111111110000000000000",
+    "1111111000000000000000",
+    "1111100000000000000000",
+    "1111000000000000000000"
+  ];
+  var DINO_RUN2 = [
+    "0000000000011111111100",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0001111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111100000000000",
+    "1111111111000000000000",
+    "1111111110000000000000",
+    "1111111110000000000000",
+    "1111111000000000000000",
+    "1111100000000000000000",
+    "1111110000000000000000"
+  ];
+  var DINO_DUCK1 = [
+    "0000000000011111111100",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0001111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111"
+  ];
+  var DINO_DUCK2 = [
+    "0000000000011111111100",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000000000011111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0000011111111111111111",
+    "0001111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111",
+    "1111111111111111111111"
+  ];
+  var CACTUS_SMALL = [
+    "000011110000",
+    "000011110000",
+    "000011110011",
+    "000011110011",
+    "000011110011",
+    "000011110011",
+    "011111111111",
+    "011111111111",
+    "011111111111",
+    "011111111111",
+    "011110000111",
+    "011110000111",
+    "011110000111",
+    "011110000111",
+    "000001111111",
+    "000001111111",
+    "000000011110",
+    "000000011110"
+  ];
+  var CACTUS_BIG = [
+    "000011110000000",
+    "000011110000000",
+    "000011110000000",
+    "000011110000000",
+    "000011110011110",
+    "000011110011110",
+    "000011110011110",
+    "000011110011110",
+    "011111111111111",
+    "011111111111111",
+    "011111111111111",
+    "011111111111111",
+    "011110000111111",
+    "011110000111111",
+    "011110000111111",
+    "011110000111111",
+    "000001111111111",
+    "000001111111111",
+    "000001111111111",
+    "000001111111111",
+    "000000011111111",
+    "000000011111111"
+  ];
+  var BIRD1 = [
+    "000111110000",
+    "001111111000",
+    "011111111100",
+    "111111111110",
+    "111111111111",
+    "111111111111",
+    "001111111100",
+    "000011110000",
+    "000011110000"
+  ];
+  var BIRD2 = [
+    "000111110000",
+    "001111111000",
+    "011111111100",
+    "111111111110",
+    "111111111111",
+    "110111111011",
+    "001111111100",
+    "000011110000",
+    "000001100000"
+  ];
+  var CLOUD = [
+    "0001111111000",
+    "0011111111100",
+    "1111111111111",
+    "1111111111111"
+  ];
+
+  function sprite(name){ return {run1:DINO_RUN1,run2:DINO_RUN2,duck1:DINO_DUCK1,duck2:DINO_DUCK2,cs:CACTUS_SMALL,cb:CACTUS_BIG,b1:BIRD1,b2:BIRD2,cloud:CLOUD}[name]; }
+  function sw(s){ return s[0].length; }
+  function sh(s){ return s.length; }
+
+  // ---- 状态 ----
+  var dino = { x:0, y:0, vy:0, w:0, h:0, onGround:true, duck:false };
+  var obstacles = [];
+  var clouds = [];
+  var speed = 0, baseSpeed = 0, score = 0, high = 0;
+  var state = 'wait'; // wait | run | dead
+  var frame = 0;
+  var PX = 0; // 像素大小
+
+  try { high = parseInt(localStorage.getItem('dino_high')||'0',10)||0; }catch(e){}
+
+  function resize(){
+    DPR = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W*DPR; cv.height = H*DPR;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    // 像素尺寸：让游戏在手机上合适
+    PX = Math.max(2, Math.floor(Math.min(W/60, H/40)));
+    var rw = sw(DINO_RUN1), rh = sh(DINO_RUN1);
+    dino.w = rw*PX; dino.h = rh*PX;
+    GROUND = Math.floor(H*0.82);
+    dino.x = Math.floor(W*0.12);
+    dino.y = GROUND - dino.h;
+    baseSpeed = Math.max(4, W*0.008);
+    if(clouds.length===0) initClouds();
+  }
+
+  function initClouds(){
+    clouds = [];
+    for(var i=0;i<4;i++){
+      clouds.push({ x:Math.random()*W, y:Math.random()*H*0.35+20, s:0.5+Math.random()*0.7 });
+    }
+  }
+
+  function reset(){
+    obstacles = [];
+    dino.y = GROUND - dino.h;
+    dino.vy = 0; dino.onGround = true; dino.duck = false;
+    speed = baseSpeed; score = 0; frame = 0;
+  }
+
+  function jump(){
+    if(dino.onGround && !dino.duck){
+      dino.vy = -PX*8.2;
+      dino.onGround = false;
+    }
+  }
+  function duckDown(){ if(dino.onGround){ dino.duck = true; resizeDino(); } }
+  function duckUp(){ if(dino.duck){ dino.duck=false; resizeDino(); } }
+
+  function resizeDino(){
+    var s = dino.duck ? DINO_DUCK1 : DINO_RUN1;
+    var nh = sh(s)*PX;
+    var dy = dino.h - nh;
+    dino.h = nh;
+    if(dino.onGround) dino.y = GROUND - dino.h;
+  }
+
+  function addObstacle(){
+    var r = Math.random();
+    if(r < 0.45){
+      var s = CACTUS_SMALL, c = 1;
+      obstacles.push({type:'cactus', s:s, w:sw(s)*PX, h:sh(s)*PX, x:W, y:GROUND, frames:0});
+    } else if(r < 0.8){
+      var s2 = CACTUS_BIG;
+      obstacles.push({type:'cactus', s:s2, w:sw(s2)*PX, h:sh(s2)*PX, x:W, y:GROUND, frames:0});
+    } else {
+      var hh = (Math.random()<0.5) ? GROUND - PX*16 : GROUND - PX*30;
+      var s3 = BIRD1;
+      obstacles.push({type:'bird', s:s3, w:sw(s3)*PX, h:sh(s3)*PX, x:W, y:hh, frames:0});
+    }
+  }
+
+  var lastObstacle = 0;
+  function update(){
+    frame++;
+    speed = baseSpeed + score/180;
+    // 物理
+    if(!dino.onGround){
+      dino.vy += PX*0.42;
+      dino.y += dino.vy;
+      if(dino.y >= GROUND - dino.h){
+        dino.y = GROUND - dino.h; dino.vy = 0; dino.onGround = true;
+      }
+    }
+    // 障碍物生成
+    if(state==='run'){
+      score += speed*0.09;
+      var minGap = Math.max(90, 260 - score*0.3) * (W/360);
+      if(W - (lastObstacle||0) > minGap && Math.random() < 0.02){
+        addObstacle(); lastObstacle = W;
+      }
+      // 云
+      for(var i=0;i<clouds.length;i++){
+        clouds[i].x -= speed*0.25;
+        if(clouds[i].x < -100) clouds[i].x = W + 50;
+      }
+    }
+    // 移动障碍物
+    for(var i=obstacles.length-1;i>=0;i--){
+      var o = obstacles[i];
+      o.x -= speed;
+      if(o.type==='bird'){ o.frames++; }
+      if(o.x + o.w < 0) obstacles.splice(i,1);
+    }
+    // 碰撞
+    var dw = dino.w*0.7, dx = dino.x + dino.w*0.15;
+    var dh = dino.h*0.85, dy = dino.y + dino.h*0.1;
+    for(var j=0;j<obstacles.length;j++){
+      var o2 = obstacles[j];
+      var ox = o2.x + o2.w*0.1, ow = o2.w*0.8;
+      var oy = o2.y + o2.h*0.05, oh = o2.h*0.9;
+      if(dx < ox+ow && dx+dw > ox && dy < oy+oh && dy+dh > oy){
+        die(); return;
+      }
+    }
+  }
+
+  function die(){
+    state = 'dead';
+    if(score > high){ high = Math.floor(score); try{ localStorage.setItem('dino_high',''+high);}catch(e){} }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    // 天空
+    var g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,'#f7f7f7'); g.addColorStop(1,'#ffffff');
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    // 云
+    ctx.fillStyle = '#e8e8e8';
+    for(var i=0;i<clouds.length;i++){
+      var c = clouds[i]; drawSprite(CLOUD, c.x, c.y, PX*c.s);
+    }
+    // 地面
+    ctx.strokeStyle = '#535353'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(0,GROUND); ctx.lineTo(W,GROUND); ctx.stroke();
+    // 障碍物
+    for(var j=0;j<obstacles.length;j++){
+      var o = obstacles[j];
+      if(o.type==='bird'){
+        drawSprite((o.frames>>3)%2===0?BIRD1:BIRD2, o.x, o.y, PX);
+      } else {
+        drawSprite(o.s, o.x, GROUND-o.h, PX);
+      }
+    }
+    // 恐龙
+    var spr;
+    if(state==='dead'){ spr = DINO_RUN1; }
+    else if(dino.duck){ spr = (frame>>3)%2===0?DINO_DUCK1:DINO_DUCK2; }
+    else if(!dino.onGround){ spr = DINO_RUN1; }
+    else { spr = (frame>>3)%2===0?DINO_RUN1:DINO_RUN2; }
+    drawSprite(spr, dino.x, dino.y, PX);
+    // 分数
+    ctx.fillStyle = '#535353';
+    ctx.font = 'bold '+(PX*8)+'px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('HI '+pad(high)+'  '+pad(Math.floor(score)), W-14, PX*10);
+    ctx.textAlign = 'left';
+    // 提示
+    if(state==='wait'){
+      ctx.fillStyle = '#535353';
+      ctx.font = 'bold '+(PX*6)+'px monospace';
+      ctx.textAlign='center';
+      ctx.fillText('点击 / 按空格 开始', W/2, GROUND - PX*28);
+      ctx.textAlign='left';
+    }
+    if(state==='dead'){
+      ctx.fillStyle = '#535353';
+      ctx.font = 'bold '+(PX*6)+'px monospace';
+      ctx.textAlign='center';
+      ctx.fillText('游戏结束', W/2, GROUND - PX*34);
+      ctx.fillText('点击重新开始', W/2, GROUND - PX*24);
+      ctx.textAlign='left';
+    }
+  }
+
+  function pad(n){ return (n<10?'0000':n<100?'000':n<1000?'00':n<10000?'0':'')+n; }
+
+  function drawSprite(arr, x, y, px){
+    ctx.fillStyle = '#535353';
+    for(var r=0;r<arr.length;r++){
+      var row = arr[r];
+      for(var c=0;c<row.length;c++){
+        if(row[c]==='1'){
+          ctx.fillRect(x + c*px, y + r*px, px, px);
+        }
+      }
+    }
+  }
+
+  function loop(){
+    if(state==='run') update();
+    else if(state==='wait'){ frame++; }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ---- 输入 ----
+  function onAction(ev){
+    if(state==='wait'){ reset(); state='run'; }
+    else if(state==='dead'){ reset(); state='run'; }
+    else if(state==='run'){ jump(); }
+  }
+  function onDuck(ev){
+    if(state==='run') duckDown();
+  }
+  function onDuckEnd(ev){
+    duckUp();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key===' ' || e.key==='ArrowUp' || e.key==='ArrowDown' || e.key==='Space'){
+      e.preventDefault();
+      if(e.key==='ArrowDown' || e.key==='s' || e.key==='S') onDuck();
+      else onAction();
+    }
+  });
+  document.addEventListener('keyup', function(e){
+    if(e.key==='ArrowDown' || e.key==='s' || e.key==='S') onDuckEnd();
+  });
+  document.addEventListener('touchstart', function(e){
+    e.preventDefault();
+    for(var i=0;i<e.changedTouches.length;i++){
+      var t = e.changedTouches[i];
+      // 下半屏触摸 = 下蹲，上半屏 = 跳跃/开始
+      if(t.clientY > H*0.65) onDuck(); else onAction();
+    }
+  }, {passive:false});
+  document.addEventListener('touchend', function(e){ onDuckEnd(); }, {passive:false});
+  document.addEventListener('mousedown', function(e){
+    if(e.clientY > H*0.65) onDuck(); else onAction();
+  });
+  document.addEventListener('mouseup', function(){ onDuckEnd(); });
+
+  resize();
+  window.addEventListener('resize', resize);
+  loop();
+})();
+</script>
+</body>
+</html>
